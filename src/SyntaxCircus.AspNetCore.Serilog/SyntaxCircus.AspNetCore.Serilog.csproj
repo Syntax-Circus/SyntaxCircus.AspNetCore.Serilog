@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PackageId>SyntaxCircus.AspNetCore.Serilog</PackageId>
+    <Title>SyntaxCircus ASP.NET Core Serilog</Title>
+    <Description>A standard Serilog bootstrap for both ASP.NET Core hosts and worker services, with an optional file-sink path resolver. Standalone — pulled out of SyntaxCircus.AspNetCore.Common so that package stays free of the Serilog dependency for consumers who don't want it.</Description>
+    <Authors>SyntaxCircus</Authors>
+    <Company>SyntaxCircus</Company>
+    <Copyright>Copyright © SyntaxCircus</Copyright>
+    <PackageTags>serilog;logging;aspnetcore;hosting</PackageTags>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageProjectUrl>https://github.com/Syntax-Circus/SyntaxCircus.AspNetCore.Serilog</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/Syntax-Circus/SyntaxCircus.AspNetCore.Serilog</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+    <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>
