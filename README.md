@@ -1,6 +1,7 @@
 # SyntaxCircus.AspNetCore.Serilog
 
 [![Build](https://github.com/Syntax-Circus/SyntaxCircus.AspNetCore.Serilog/actions/workflows/build.yml/badge.svg)](https://github.com/Syntax-Circus/SyntaxCircus.AspNetCore.Serilog/actions/workflows/build.yml)
+[![NuGet](https://img.shields.io/nuget/v/SyntaxCircus.AspNetCore.Serilog.svg)](https://www.nuget.org/packages/SyntaxCircus.AspNetCore.Serilog)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.txt)
 
 A standard Serilog bootstrap for both ASP.NET Core hosts and worker services, with an optional file-sink path resolver. Standalone on purpose — pulled out of [SyntaxCircus.AspNetCore.Common](https://github.com/Syntax-Circus/SyntaxCircus.AspNetCore.Common) so that package stays free of the Serilog dependency for consumers who don't want it.
