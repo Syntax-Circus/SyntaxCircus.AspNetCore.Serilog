@@ -10,6 +10,7 @@ public class SerilogFileLoggingOptionsTests
         options.Enabled.ShouldBeFalse();
         options.Path.ShouldBeNull();
         options.RollingInterval.ShouldBe(global::Serilog.RollingInterval.Day);
+        options.RetainedFileCountLimit.ShouldBeNull();
     }
 
     [Fact]
@@ -20,10 +21,12 @@ public class SerilogFileLoggingOptionsTests
             Enabled = true,
             Path = "/var/log/app.txt",
             RollingInterval = global::Serilog.RollingInterval.Hour,
+            RetainedFileCountLimit = 14,
         };
 
         options.Enabled.ShouldBeTrue();
         options.Path.ShouldBe("/var/log/app.txt");
         options.RollingInterval.ShouldBe(global::Serilog.RollingInterval.Hour);
+        options.RetainedFileCountLimit.ShouldBe(14);
     }
 }
