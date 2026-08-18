@@ -11,4 +11,10 @@ public sealed class SerilogFileLoggingOptions
 
     /// <summary>Maximum number of rolled log files to retain on disk. <c>null</c> (default) retains all files, matching Serilog's own <c>File</c> sink default.</summary>
     public int? RetainedFileCountLimit { get; set; }
+
+    /// <summary>Optional template passed to Serilog's <c>File</c> sink. <c>null</c> (default) uses Serilog's standard file output template.</summary>
+    public string? OutputTemplate { get; set; }
+
+    /// <summary>Allows multiple processes to write to the same log file. Defaults to <c>false</c>, matching Serilog's <c>File</c> sink default.</summary>
+    public bool Shared { get; set; }
 }
