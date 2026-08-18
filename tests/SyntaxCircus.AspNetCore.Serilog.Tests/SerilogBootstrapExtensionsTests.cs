@@ -1,3 +1,5 @@
+using Serilog;
+
 namespace SyntaxCircus.AspNetCore.Serilog.Tests;
 
 public class SerilogBootstrapExtensionsTests
@@ -72,5 +74,63 @@ public class SerilogBootstrapExtensionsTests
                 Directory.Delete(directory, recursive: true);
             }
         }
+    }
+
+    [Fact]
+    public void AddStandardSerilog_FileLoggingWithRetainedFileCountLimit_HostStillBuildsSuccessfully()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        var logPath = Path.Combine(Path.GetTempPath(), "sc-serilog-tests", Guid.NewGuid().ToString("N"), "log-.txt");
+
+        try
+        {
+            builder.AddStandardSerilog(options =>
+            {
+                options.Enabled = true;
+                options.Path = logPath;
+                options.RetainedFileCountLimit = 7;
+            });
+
+            using var host = builder.Build();
+
+            host.Services.ShouldNotBeNull();
+        }
+        finally
+        {
+            var directory = Path.GetDirectoryName(logPath);
+            if (directory is not null && Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void AddStandardSerilog_ConfigureEnrichmentCallback_IsInvoked()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        var invoked = false;
+
+        builder.AddStandardSerilog(configureEnrichment: _ => invoked = true);
+
+        // configureEnrichment runs inside the deferred AddSerilog callback, unlike
+        // configureFileLogging (invoked eagerly, synchronously) — it only fires once the host
+        // builds and the logger is actually constructed.
+        using var host = builder.Build();
+        _ = host.Services.GetService<Microsoft.Extensions.Logging.ILogger<SerilogBootstrapExtensionsTests>>();
+
+        invoked.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AddStandardSerilog_ConfigureEnrichmentCallback_HostStillBuildsSuccessfully()
+    {
+        var builder = Host.CreateApplicationBuilder();
+
+        builder.AddStandardSerilog(configureEnrichment: cfg => cfg.Enrich.WithProperty("Application", "test"));
+
+        using var host = builder.Build();
+
+        host.Services.ShouldNotBeNull();
     }
 }

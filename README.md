@@ -28,10 +28,25 @@ builder.AddStandardSerilog(fileLogging =>
     fileLogging.Enabled = true;
     fileLogging.Path = "logs/log-.txt"; // optional — relative to content root; omit for the LocalAppData default
     fileLogging.RollingInterval = RollingInterval.Day;
+    fileLogging.RetainedFileCountLimit = 14; // optional — omit (default null) to retain all rolled files
 });
 ```
 
 When `Path` is omitted, logs go to `%LocalAppData%/{ApplicationName}/logs/log-.txt`.
+
+`RetainedFileCountLimit` matches Serilog's own `File` sink default: `null` retains every rolled
+file indefinitely; set it to cap on-disk retention (oldest files beyond the limit are deleted
+as new ones roll).
+
+## Additional enrichers
+
+```csharp
+builder.AddStandardSerilog(configureEnrichment: cfg => cfg
+    .Enrich.WithMachineName()
+    .Enrich.WithEnvironmentName());
+```
+
+`configureEnrichment` is invoked after `Enrich.FromLogContext()` and before the file sink (if any) is wired up — use it to layer on any enrichers `AddStandardSerilog` doesn't add by default.
 
 ## Contributing
 
