@@ -4,30 +4,37 @@ namespace SyntaxCircus.AspNetCore.Serilog;
 
 public static class SerilogBootstrapExtensions
 {
+    private static readonly object BootstrapLock = new();
+    private static IDisposable? ownedBootstrap;
     private const string DefaultFileOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 
-    /// <summary>
-    /// Bootstraps Serilog with a console-only static logger for pre-DI startup logging, and configures
-    /// an independent full logger (from <paramref name="builder"/>'s configuration + DI services) via
-    /// <c>Services.AddSerilog(...)</c> — the registration path that works for both
-    /// <c>WebApplicationBuilder</c> and a plain worker-service <c>HostApplicationBuilder</c>,
-    /// unlike <c>Host.UseSerilog(...)</c> which only <c>WebApplicationBuilder</c> exposes.
-    /// The static bootstrap logger is preserved so multiple hosts in the same process do not share
-    /// a reloadable logger lifecycle; use <c>ILogger&lt;T&gt;</c> for the host's full logger.
-    /// <paramref name="configureEnrichment"/> is an optional hook to layer additional enrichers
-    /// (e.g. <c>Enrich.WithMachineName()</c>) onto the logger, invoked after
-    /// <c>Enrich.FromLogContext()</c> and before the file sink (if any) is wired up.
-    /// </summary>
+    /// <summary>Configures startup logging while preserving independent per-host DI logging.</summary>
     public static IHostApplicationBuilder AddStandardSerilog(
         this IHostApplicationBuilder builder,
-        Action<SerilogFileLoggingOptions>? configureFileLogging = null,
-        Action<LoggerConfiguration>? configureEnrichment = null)
+        Action<SerilogFileLoggingOptions>? configureFileLogging,
+        Action<LoggerConfiguration>? configureEnrichment,
+        SerilogBootstrapOptions bootstrapOptions)
     {
         ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(bootstrapOptions);
 
-        global::Serilog.Log.Logger = new global::Serilog.LoggerConfiguration()
-            .WriteTo.Console()
-            .CreateBootstrapLogger();
+        var bootstrapConfiguration = new LoggerConfiguration();
+        if (bootstrapOptions.ConsoleEnabled)
+        {
+            bootstrapConfiguration.WriteTo.Console(
+                standardErrorFromLevel: bootstrapOptions.ConsoleToStandardError
+                    ? global::Serilog.Events.LogEventLevel.Verbose
+                    : null);
+        }
+        bootstrapOptions.ConfigureLogger?.Invoke(bootstrapConfiguration);
+        var bootstrap = new OwnedBootstrapLogger(bootstrapConfiguration.CreateBootstrapLogger());
+        lock (BootstrapLock)
+        {
+            var previousOwnedBootstrap = ownedBootstrap;
+            global::Serilog.Log.Logger = bootstrap;
+            ownedBootstrap = bootstrap;
+            previousOwnedBootstrap?.Dispose();
+        }
 
         var fileLoggingOptions = new SerilogFileLoggingOptions();
         configureFileLogging?.Invoke(fileLoggingOptions);
@@ -57,4 +64,16 @@ public static class SerilogBootstrapExtensions
 
         return builder;
     }
+
+    /// <summary>
+    /// Installs a process-global console bootstrap logger and an independent full DI logger.
+    /// File options run immediately; enrichment runs during DI logger construction after
+    /// configuration, services and LogContext enrichment. The static logger is preserved so
+    /// concurrent hosts do not share its reload/freeze lifecycle. Use ILogger&lt;T&gt; for host logging.
+    /// </summary>
+    public static IHostApplicationBuilder AddStandardSerilog(
+        this IHostApplicationBuilder builder,
+        Action<SerilogFileLoggingOptions>? configureFileLogging = null,
+        Action<LoggerConfiguration>? configureEnrichment = null)
+        => builder.AddStandardSerilog(configureFileLogging, configureEnrichment, new SerilogBootstrapOptions());
 }

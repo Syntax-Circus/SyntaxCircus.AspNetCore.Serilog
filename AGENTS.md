@@ -21,7 +21,7 @@ The public surface is intentionally small:
 - The full logger uses `ReadFrom.Configuration`, `ReadFrom.Services`, and
   `Enrich.FromLogContext`, in that order before the caller's enrichment callback and optional file
   sink.
-- `Log.Logger` is a process-global, console-only bootstrap logger. The DI-provided logger is an
+- `Log.Logger` is a process-global bootstrap logger (console-only by default). The DI-provided logger is an
   independent full logger. `preserveStaticLogger: true` is required to prevent multiple hosts in
   one process from sharing Serilog's reload/freeze lifecycle.
 - `SerilogFileLoggingOptions` is callback-only; it is not bound automatically from
@@ -48,6 +48,9 @@ README.md                                NuGet-packaged landing page
 ## Editing rules
 
 - Keep public API additions additive unless a breaking change is explicitly requested.
+- The additive three-argument overload accepts `SerilogBootstrapOptions` last to retain null
+  callback source compatibility. Console defaults stay enabled/stdout. `ConfigureLogger` runs
+  before static assignment; its failure preserves the previously assigned logger.
 - Preserve file-sink defaults when adding options. Do not pass a null output template directly to
   Serilog's `File` sink; it rejects null.
 - Do not claim support for options not exposed by `SerilogFileLoggingOptions`.

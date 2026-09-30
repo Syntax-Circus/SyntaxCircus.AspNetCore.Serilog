@@ -55,6 +55,20 @@ adds `LogContext` enrichment, and is used through normal `ILogger<T>` injection.
 
 ## File logging
 
+For a CLI that writes JSON to stdout, route startup diagnostics to stderr:
+
+```csharp
+builder.AddStandardSerilog(
+    configureFileLogging: null,
+    configureEnrichment: null,
+    bootstrapOptions: new SerilogBootstrapOptions { ConsoleToStandardError = true });
+```
+
+Set `ConsoleEnabled = false` to omit the bootstrap console sink. `ConfigureLogger` can add
+trusted startup sinks, levels and enrichment synchronously. These options affect the static
+bootstrap logger only; configure the full DI logger's sinks separately, including any console
+sink supplied by application configuration. The original overload retains stdout defaults.
+
 ```csharp
 using Serilog;
 
