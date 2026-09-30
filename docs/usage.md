@@ -86,7 +86,7 @@ public sealed class Worker(ILogger<Worker> logger) : BackgroundService
 
 `AddStandardSerilog()` has two stages:
 
-1. It immediately installs a console-only Serilog bootstrap logger in the process-global
+1. It immediately installs a Serilog bootstrap logger (console-only by default) in the process-global
    `Serilog.Log.Logger`. This permits direct static Serilog calls during the pre-DI startup window.
 2. It registers an independent, full Serilog logger with the service collection. That logger is
    constructed when the host first resolves its logging infrastructure and is the logger obtained
@@ -163,7 +163,33 @@ public static IHostApplicationBuilder AddStandardSerilog(
 | `configureFileLogging` | Optional. Runs synchronously during registration. Configure the optional File sink here. |
 | `configureEnrichment` | Optional. Runs when the full DI logger is created, after `Enrich.FromLogContext()` and before the package-managed File sink. |
 
-### `SerilogFileLoggingOptions`
+### Bootstrap options overload
+
+```csharp
+public static IHostApplicationBuilder AddStandardSerilog(
+    this IHostApplicationBuilder builder,
+    Action<SerilogFileLoggingOptions>? configureFileLogging,
+    Action<LoggerConfiguration>? configureEnrichment,
+    SerilogBootstrapOptions bootstrapOptions)
+```
+
+All three arguments are required on this additive overload; pass `null` for unused callbacks.
+Keeping the options argument last preserves existing calls such as `AddStandardSerilog(null)`.
+Null builder or options throws `ArgumentNullException`.
+
+`ConsoleEnabled` defaults to `true`. `ConsoleToStandardError` defaults to `false`; setting it to
+`true` routes every enabled bootstrap level to stderr. Disabling console output omits only the
+package-managed bootstrap sink. `ConfigureLogger` runs synchronously after that sink is added
+and before the new logger is created and assigned to `Log.Logger`. If the hook throws, the
+previous static logger remains assigned. The hook can add trusted sinks, minimum levels or
+enrichment; it neither receives DI services nor automatically sanitizes messages or exceptions.
+
+These options do not change the full DI logger's configuration, sinks, ownership or lifetime.
+For JSON CLI output, also ensure application-configured full-logger sinks do not write to stdout.
+The static logger is process-global, with the latest successful registration taking effect;
+application code owns its final `Log.CloseAndFlush()` after all hosts have finished.
+
+### `SerilogFileLoggingOptions` reference
 
 File logging is disabled unless `Enabled` is set to `true`.
 

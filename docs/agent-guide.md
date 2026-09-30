@@ -17,6 +17,14 @@ application's existing logging conventions.
 
 ## Required call order
 
+For JSON CLI stdout, use the three-argument overload with
+`bootstrapOptions: new SerilogBootstrapOptions { ConsoleToStandardError = true }`, passing
+`null` for unused callbacks. Set `ConsoleEnabled = false` for no bootstrap console output.
+Configure safe startup sinks/enrichment with `ConfigureLogger`; the hook runs before static
+assignment, and a throwing hook leaves the previous static logger intact. The caller remains
+responsible for redacting event data and for full DI console sinks configured separately.
+Flush the static logger only when the process has finished using it, after all hosts stop.
+
 1. Create `WebApplicationBuilder` or `HostApplicationBuilder`.
 2. Call `AddStandardSerilog()` exactly during builder configuration and before `Build()`.
 3. Register application services.
@@ -76,7 +84,7 @@ await host.RunAsync();
   `ReadFrom.Services`, and `Enrich.FromLogContext` before the caller's enrichment callback.
 - The file callback runs immediately. The enrichment callback runs later, when the full logger is
   first constructed from DI.
-- `Serilog.Log.Logger` is a shared process-global console bootstrap logger. The full per-host
+- `Serilog.Log.Logger` is a shared process-global bootstrap logger, with console output by default. The full per-host
   logger is accessed through Microsoft.Extensions.Logging.
 - Several hosts may safely run concurrently in one process when they use the DI logger.
 - File logging starts disabled. Its callback options are not configuration-bound.
