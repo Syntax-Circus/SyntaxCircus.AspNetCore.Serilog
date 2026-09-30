@@ -4,6 +4,8 @@ namespace SyntaxCircus.AspNetCore.Serilog;
 
 public static class SerilogBootstrapExtensions
 {
+    private static readonly object BootstrapLock = new();
+    private static IDisposable? ownedBootstrap;
     private const string DefaultFileOutputTemplate = "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}";
 
     /// <summary>Configures startup logging while preserving independent per-host DI logging.</summary>
@@ -25,7 +27,14 @@ public static class SerilogBootstrapExtensions
                     : null);
         }
         bootstrapOptions.ConfigureLogger?.Invoke(bootstrapConfiguration);
-        global::Serilog.Log.Logger = bootstrapConfiguration.CreateBootstrapLogger();
+        var bootstrap = new OwnedBootstrapLogger(bootstrapConfiguration.CreateBootstrapLogger());
+        lock (BootstrapLock)
+        {
+            var previousOwnedBootstrap = ownedBootstrap;
+            global::Serilog.Log.Logger = bootstrap;
+            ownedBootstrap = bootstrap;
+            previousOwnedBootstrap?.Dispose();
+        }
 
         var fileLoggingOptions = new SerilogFileLoggingOptions();
         configureFileLogging?.Invoke(fileLoggingOptions);

@@ -188,6 +188,12 @@ These options do not change the full DI logger's configuration, sinks, ownership
 For JSON CLI output, also ensure application-configured full-logger sinks do not write to stdout.
 The static logger is process-global, with the latest successful registration taking effect;
 application code owns its final `Log.CloseAndFlush()` after all hosts have finished.
+Successful subsequent registrations dispose the preceding package-created bootstrap logger and
+its sinks under a process-wide ownership lock. Externally assigned loggers remain caller-owned
+and are never disposed by this package. Bootstrap hooks run before that lock; a failed hook does
+not replace or dispose the existing logger. Use distinct bootstrap file paths or explicitly
+shared sinks if hosts register concurrently: the replacement is created before the previous
+logger is disposed, so an exclusive sink targeting the same file can collide during creation.
 
 ### `SerilogFileLoggingOptions` reference
 

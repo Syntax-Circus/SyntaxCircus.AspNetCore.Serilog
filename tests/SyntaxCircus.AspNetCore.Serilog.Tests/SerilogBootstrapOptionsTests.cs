@@ -74,6 +74,62 @@ public sealed class SerilogBootstrapOptionsTests
     }
 
     [Fact]
+    public void BootstrapReplacement_DisposesPackageOwnedSinksButPreservesExternalLogger()
+    {
+        var originalLogger = Log.Logger;
+        var externalSink = new DisposableSink();
+        using var externalLogger = new LoggerConfiguration().WriteTo.Sink(externalSink).CreateLogger();
+        var firstSink = new DisposableSink();
+        var secondSink = new DisposableSink();
+        try
+        {
+            Log.Logger = externalLogger;
+            Host.CreateApplicationBuilder().AddStandardSerilog(null, null, new SerilogBootstrapOptions
+            { ConsoleEnabled = false, ConfigureLogger = configuration => configuration.WriteTo.Sink(firstSink) });
+            externalSink.Disposals.ShouldBe(0);
+            Host.CreateApplicationBuilder().AddStandardSerilog(null, null, new SerilogBootstrapOptions
+            { ConsoleEnabled = false, ConfigureLogger = configuration => configuration.WriteTo.Sink(secondSink) });
+            firstSink.Disposals.ShouldBe(1);
+            secondSink.Disposals.ShouldBe(0);
+            externalSink.Disposals.ShouldBe(0);
+            Log.Information("second startup");
+            secondSink.Events.ShouldBe(1);
+            Log.CloseAndFlush();
+            Host.CreateApplicationBuilder().AddStandardSerilog(null, null,
+                new SerilogBootstrapOptions { ConsoleEnabled = false });
+            firstSink.Disposals.ShouldBe(1);
+            secondSink.Disposals.ShouldBe(1);
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+            Log.Logger = originalLogger;
+        }
+    }
+
+    [Fact]
+    public void BootstrapFailedReplacement_DoesNotDisposePreviouslyOwnedSink()
+    {
+        var originalLogger = Log.Logger;
+        var sink = new DisposableSink();
+        try
+        {
+            Host.CreateApplicationBuilder().AddStandardSerilog(null, null, new SerilogBootstrapOptions
+            { ConsoleEnabled = false, ConfigureLogger = configuration => configuration.WriteTo.Sink(sink) });
+            Should.Throw<InvalidOperationException>(() => Host.CreateApplicationBuilder().AddStandardSerilog(null, null,
+                new SerilogBootstrapOptions { ConfigureLogger = _ => throw new InvalidOperationException("failure") }));
+            sink.Disposals.ShouldBe(0);
+            Log.Information("previous logger still usable");
+            sink.Events.ShouldBe(1);
+        }
+        finally
+        {
+            Log.CloseAndFlush();
+            Log.Logger = originalLogger;
+        }
+    }
+
+    [Fact]
     public async Task BootstrapOptions_ConcurrentHostsKeepIndependentSinksAndDisposal()
     {
         var originalLogger = Log.Logger;
@@ -141,6 +197,14 @@ public sealed class SerilogBootstrapOptionsTests
     {
         public List<LogEvent> Events { get; } = [];
         public void Emit(LogEvent logEvent) => Events.Add(logEvent);
+    }
+
+    private sealed class DisposableSink : ILogEventSink, IDisposable
+    {
+        public int Disposals { get; private set; }
+        public int Events { get; private set; }
+        public void Emit(LogEvent logEvent) => Events++;
+        public void Dispose() => Disposals++;
     }
 }
 
